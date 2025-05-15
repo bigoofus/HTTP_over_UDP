@@ -19,9 +19,6 @@ class RUDPSocket:
 
         self.send_lock = threading.Lock()
         self.recv_lock = threading.Lock()
-        
-        # Tracking received sequence numbers for duplicate protection
-        self.received_seq_numbers = set()
 
     def bind(self, address):
         self.sock.bind(address)
@@ -88,7 +85,7 @@ class RUDPSocket:
             start = next_seq - self.seq
             end = min(start + MAX_PAYLOAD, total_data)
             payload = data[start:end]
-            packet = create_packet(next_seq, 0, FLAG_ACK, payload)
+            packet = create_packet(next_seq, 0, FLAG_ACK,  payload)
             self.sock.sendto(packet, self.peer_address)
             print(f"[Client] Sent seq {next_seq}")
 
@@ -105,7 +102,7 @@ class RUDPSocket:
                     self.sock.sendto(packet, self.peer_address)  # Retransmit the packet
 
         # Send FIN
-        fin = create_packet(self.seq + total_data, 0, FLAG_FIN, b'')
+        fin = create_packet(self.seq + total_data, 0, FLAG_FIN,  b'')
         self.sock.sendto(fin, self.peer_address)
         print("[Client] Sent FIN")
 
@@ -119,15 +116,6 @@ class RUDPSocket:
                         data, addr = self.sock.recvfrom(2048)
                         packet = parse_packet(data)
 
-                        if packet['seq'] in self.received_seq_numbers:
-                            # Duplicate packet received, resend ACK and ignore
-                            print(f"[Server] Duplicate packet {packet['seq']} received, ignoring.")
-                            ack_packet = create_packet(
-                                self.seq, expected_seq, FLAG_ACK, b''
-                            )
-                            self.sock.sendto(ack_packet, addr)
-                            continue
-
                         if expected_seq == 0:
                             expected_seq = packet['seq']
 
@@ -135,7 +123,7 @@ class RUDPSocket:
                             if packet['flags'] & FLAG_FIN:
                                 print("[Server] Received FIN. Ending file transfer.")
                                 ack_packet = create_packet(
-                                    self.seq, packet['seq'] + 1, FLAG_ACK, b''
+                                    self.seq, packet['seq'] + 1, FLAG_ACK,  b''
                                 )
                                 self.sock.sendto(ack_packet, addr)
                                 break
@@ -144,16 +132,15 @@ class RUDPSocket:
                             print(f"[Server] Received packet {packet['seq']} with payload size {len(packet['payload'])}")
 
                             ack_packet = create_packet(
-                                self.seq, packet['seq'] + len(packet['payload']), FLAG_ACK, b''
+                                self.seq, packet['seq'] + len(packet['payload']), FLAG_ACK,  b''
                             )
                             self.sock.sendto(ack_packet, addr)
-                            self.received_seq_numbers.add(packet['seq'])  # Track received packet
                             expected_seq += len(packet['payload'])
 
                         else:
                             print(f"[Server] Unexpected seq {packet['seq']}, expected {expected_seq}. Resending ACK.")
                             ack_packet = create_packet(
-                                self.seq, expected_seq, FLAG_ACK, b''
+                                self.seq, expected_seq, FLAG_ACK,  b''
                             )
                             self.sock.sendto(ack_packet, addr)
 

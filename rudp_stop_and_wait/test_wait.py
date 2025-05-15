@@ -13,15 +13,16 @@ def run_server():
     rudp_server.bind(SERVER_ADDR)
     conn, addr = rudp_server.accept()
     print(f"[Test Server] Accepted connection from {addr}")
-    conn.receive_file(OUTPUT_FILE)
+    conn.receive_data()
     print(f"[Test Server] File received and saved as '{OUTPUT_FILE}'")
 
 def run_client():
     time.sleep(1)  # Ensure server is ready
     rudp_client = RUDPSocket()
     rudp_client.connect(SERVER_ADDR)
-    rudp_client.assess_file(INPUT_FILE)
-    rudp_client.send_file(INPUT_FILE)
+    # rudp_client.assess_file(INPUT_FILE)
+    # rudp_client.send_file(INPUT_FILE)
+    rudp_client.send_data(b'Hello, Server! This is a test message.')
     print(f"[Test Client] File '{INPUT_FILE}' sent to server.")
 
 def main():
