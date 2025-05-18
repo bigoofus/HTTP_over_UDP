@@ -9,7 +9,7 @@ class httpclient():
         pass
     
     def _connect_socket(self,loss,corrupt):
-        self.socket=RUDPsocket()
+        self.socket=RUDPsocket(loss_rate=loss,corp_rate=corrupt)
         self.socket.connect(server_addr=SERVER_ADDR)
         
         logging.info(f"Attempting RUDP connect to {SERVER_ADDR[0]}:{SERVER_ADDR[1]}...")
@@ -114,7 +114,7 @@ class httpclient():
     
 def main():
     test_cases = [
-        ("GET", "/index.html", None, 0.0, 0.0),
+        ("GET", "/index.html", None, 0.0, 0.3),#0.3 for loss is good
         ("GET", "/test.txt", None, 0.0, 0.0),
         ("GET", "/hh", None, 0.0, 0.0),
         ("POST", "/ay7aga", "bla=blah", 0.0, 0.0),
