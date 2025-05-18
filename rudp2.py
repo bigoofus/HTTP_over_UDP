@@ -191,6 +191,7 @@ class RUDPsocket:
 
                 # 1) send SYN-ACK
                 self._send_packet(self.seq, self.ack, SYNACK_FLAG)
+                self.seq += 1
                 logging.info(f"[RUDP SERVER] SYN-ACK sent to {client_addr} seq {self.seq} ack {self.ack}")
 
                 # 2) wait for final ACK
