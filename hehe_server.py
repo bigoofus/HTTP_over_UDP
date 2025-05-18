@@ -56,8 +56,11 @@ class httpserver:
             raw_data=b""
             body_len=0
             buffer=b""
+            
             while b"\r\n\r\n" not in buffer:
+                
                 seg=sock.receive_data()
+                
                 if not seg:
                     logging.error(f"HTTP-Server: Failed to receive headers from {client_addr}")
                     return
@@ -110,7 +113,8 @@ class httpserver:
             self._send_response(sock, 500, "Internal Server Error", "text/html", b"<h1>500 Error</h1>")
         finally:
             logging.info(f"HTTP-Server: Closing connection to {client_addr}")
-            # sock.close()
+            sock.close()
+            sock.receive_data()
 
     def start(self):
         logging.info(f"HTTP-Server: Starting on {SERVER_ADDR[0]}:{SERVER_ADDR[1]}, serving from {os.path.abspath(self.root)}")
@@ -127,6 +131,9 @@ class httpserver:
                 logging.info("HTTP-Server: Shutting down...")
                 # server_socket.close()
                 break
+            finally:
+                logging.info("HTTP-Server: Listener socket closed — exiting.")
+                raise SystemExit 
 
 if __name__=="__main__":
     serv = httpserver()

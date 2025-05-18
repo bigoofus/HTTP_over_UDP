@@ -133,7 +133,13 @@ def main():
         client = httpclient()
         client.send_request(method, path, body_str=body, loss=loss, corrupt=corrupt)
         # client.socket.close()
-        input("Press Enter to continue to the next test case...")
+        try:
+            input("Press Enter to continue to the next test case...")
+        except KeyboardInterrupt:
+            logging.info(f"\nmonkeygang on top")
+            raise SystemExit
+            
+        
 
 if __name__ == "__main__":
     main()
