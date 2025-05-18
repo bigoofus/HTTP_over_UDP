@@ -114,12 +114,12 @@ class httpclient():
     
 def main():
     test_cases = [
-        ("GET", "/index.html", None, 0.0, 0.3),#0.3 for loss is good
+        ("GET", "/index.html", None, 0.2, 0.0),     #0.3 for loss is good
         ("GET", "/test.txt", None, 0.0, 0.0),
-        ("GET", "/hh", None, 0.0, 0.0),
+        ("GET", "/h ", None, 0.0, 0.0),
         ("POST", "/ay7aga", "bla=blah", 0.0, 0.0),
-        ("GET", "/index.html", None, 0.0, 0.1),
-        ("GET", "/index.html", None, 0.1, 0.0),
+        ("GET", "/index.html", None, 0.0, 0.3),
+        ("GET", "/index.html", None, 0.3, 0.0),
         ("GET", "/index.html", None, 0.2, 0.3),
     ]
 
@@ -131,7 +131,7 @@ def main():
             logging.info(f"Body: {body[:100]}...")
 
         client = httpclient()
-        client.send_request(method, path, body_str=body, loss=loss, corrupt=corrupt)
+        client.send_request(method, path, body_str = body, loss = loss, corrupt = corrupt)
         # client.socket.close()
         try:
             input("Press Enter to continue to the next test case...")
