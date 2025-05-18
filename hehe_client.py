@@ -114,7 +114,7 @@ class httpclient():
     
 def main():
     test_cases = [
-        ("GET", "/index.html", None, 0.25, 0.0),
+        ("GET", "/index.html", None, 0.0, 0.3),#0.3 for loss is good
         ("GET", "/test.txt", None, 0.0, 0.0),
         ("GET", "/hh", None, 0.0, 0.0),
         ("POST", "/ay7aga", "bla=blah", 0.0, 0.0),

@@ -115,7 +115,7 @@ class RUDPsocket:
         return packet
     
     def _send_packet(self,seq,ack,flag,payload=b''):
-        while self.closed == False:
+        if self.closed == False:
             packet = pack_packet(seq,ack,flag,payload)
         
             if self._simulate_packet_loss():
@@ -177,6 +177,8 @@ class RUDPsocket:
                 continue
             if pkt == "error":
                 logging.info(f"[RUDP SERVER] runtime error no connection established")
+                continue
+            if pkt =="invalid":
                 continue
 
             rseq, rack, rflags, payload, client_addr = pkt
@@ -249,6 +251,8 @@ class RUDPsocket:
                 continue
             if reply == "error":
                 break
+            if reply=="invalid":
+                continue
 
             rseq, rack , rflags , _ , _ = reply
 
@@ -281,6 +285,9 @@ class RUDPsocket:
                 if reply =="error":
                     logging.error("RUDP: socket error during send")
                     return False
+                if reply =="invalid":
+                    logging.warning("[RUDP-SEND] receiver reported INVALID → resend")
+                    continue
                 
                 self.seq+=length
                 break
@@ -292,7 +299,7 @@ class RUDPsocket:
             offset += length
         return True
     
-    def receive_data(self, max_retries = 10):
+    def receive_data(self, max_retries =RETRANSMISSIONS):
 
         retries = 0
         logging.warning(f"[RUDP-RECV] receive data called")
@@ -349,45 +356,58 @@ class RUDPsocket:
         return None 
 
     #Close Connection with FIN Exchange   
-    def close(self, max_retries: int = 10):
-        """Initiate a single-FIN graceful shutdown."""
+        # -----------------------------------------------------------------
+    # graceful shutdown with reliable FIN exchange
+    # -----------------------------------------------------------------
+    def close(self, max_retries: int = RETRANSMISSIONS):
         if self.closed:
             return
 
-        # 1) send FIN
-        self._send_packet(self.seq, 0, FIN_FLAG)
         fin_seq = self.seq
-        self.seq += 1
-        logging.info(f"[RUDP] FIN sent seq={fin_seq}")
-
-        # 2) wait for FIN|ACK
         retries = 0
+
         while retries < max_retries:
+
+            # ---- send FIN -------------------------------------------------
+            self._send_packet(fin_seq, 0, FIN_FLAG)
+            attempt_no = retries + 1
+            logging.info(f"[RUDP] FIN sent (try {attempt_no}/{max_retries}) seq={fin_seq}")
+
+            # ---------------------------------------------------------------
             pkt = self._receive_packet()
-            if pkt == "timeout":
-                retries += 1
-                logging.info(f"[RUDP] close timeout ({retries}/{max_retries})")
-                continue
+
+            # analyse reply -------------------------------------------------
             if pkt == "error":
                 logging.error("[RUDP] socket error during close")
                 break
 
+            if pkt in ("timeout", "invalid"):
+                # lost / corrupted → just loop again
+                retries += 1
+                continue
+
             rseq, rack, rflags, _payload, _addr = pkt
 
-            # peer’s FIN|ACK acknowledging our FIN?
-            if (rflags & (FIN_FLAG | ACK_FLAG)) == (FIN_FLAG | ACK_FLAG) and rack == fin_seq + 1:
+            # correct FIN|ACK?
+            if (rflags & (FIN_FLAG | ACK_FLAG)) == (FIN_FLAG | ACK_FLAG) \
+               and rack == fin_seq + 1:
                 logging.info("[RUDP] FIN|ACK received – connection closed cleanly")
-                break     # done!
+                break
 
-            # Got pure FIN (old behaviour) – reply FIN|ACK then wait again
+            # bare FIN → acknowledge and wait again
             if rflags & FIN_FLAG and not (rflags & ACK_FLAG):
                 self._send_packet(self.seq, rseq + 1, FIN_FLAG | ACK_FLAG)
-                logging.info("[RUDP] (close) peer sent bare FIN → sent FIN|ACK")
+                logging.info("[RUDP] peer sent bare FIN → FIN|ACK replied")
+                retries += 1          # count this round too
+                continue
+
+            # any other packet: ignore, retry
+            retries += 1
 
         else:
-            logging.warning("[RUDP] close: FIN|ACK not received, giving up")
+            logging.warning("[RUDP] close: retries exhausted – closing anyway")
 
-        # 3) finalise
         self.closed = True
         self.socket.close()
         logging.info("[RUDP] socket closed")
+
